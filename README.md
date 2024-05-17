@@ -4,7 +4,7 @@ Module designed to predict action potential events and stimulate N milliseconds 
 
 Please, if you use this module cite:
 
-Garrido-Peña, Alicia, Sánchez-Martín, Pablo, Reyes-Sanchez, Manuel, Levi, Rafael, Rodriguez, Francisco B., Castilla, Javier, Tornero, Jesús, Varona, Pablo. Modulation of neuronal dynamics by sustained and activity-dependent continuous-wave near-infrared laser stimulation. 2024. Submitted.
+Alicia Garrido-Peña, Pablo Sanchez-Martin, Manuel Reyes-Sanchez, Rafael Levi, Francisco B. Rodriguez, Javier Castilla, Jesus Tornero, Pablo Varona, Modulation of neuronal dynamics by sustained and activity-dependent continuous-wave near-infrared laser stimulation, Neurophoton. 11(2), 024308 (2024), doi: 10.1117/1.NPh.11.2.024308. 
 
 https://github.com/GNB-UAM/Garrido-Pena_Modulation-neural-dynamics-by-CW-NIR-stimulation
 
