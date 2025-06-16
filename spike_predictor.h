@@ -65,7 +65,10 @@ private:
   bool updatable;
   
   bool got_spike;
-  
+  bool update_in_this_cycle;
+  bool set_outputs;
+  int t_after;
+
   bool switch_th;
   double time_from_peak;
   int n_points;
