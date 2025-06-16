@@ -160,34 +160,15 @@ SpikePredictor::execute(void)
         n_spikes++;
 
         /*SPIKE DETECTED*/
-        if (time_from_peak < 0)
+        if (time_from_peak <= 0)
         {
           updatable = true;
+          update_in_this_cycle = true;
           // cycle --;
         }
-
-        // Save threshold values for next spike
-
-        // Get threshold for V
-        switch_th = false;
-        th_calculated = v_list[(vector_size + cycle - time_from_peak_points) % vector_size];
-        output(1) = th_calculated;
-
-        // Get slope
-        x1 = v_list[(vector_size + cycle - time_from_peak_points ) % vector_size];
-        x2 = v_list[(vector_size + cycle - time_from_peak_points -n_p_slope) % vector_size];
-      
-        sl_calculated = calculate_slope(x1, x2, n_p_slope*period);
-        output(2) = sl_calculated;
-
-        //Get threshold for sum 
-        th_sum_calculated = sum_list[(vector_size + cycle - time_from_peak_points) % vector_size];
-        //Get threshold by mean of 3 last spikes. 
-        //TODO: define lim of buffer and size. (use more points ¿?)
-        th_sum_buff[n_spikes%10] = th_sum_calculated;
-        th_sum_calculated = (th_sum_calculated + th_sum_buff[(n_spikes%10)-1] + th_sum_buff[(n_spikes%10)-2])/3;
-
-
+        else{
+          t_after = 0;
+        }
         allow_reset = 1;
       }
       
@@ -195,13 +176,42 @@ SpikePredictor::execute(void)
   }
   else //After the peak
   {
-    if (t_after < time_from_peak){ //stimulate after the peak
+    if (t_after < time_from_peak_points){ //stimulate after the peak
       t_after++; //Wait for the time to stimulate
     }
     else if (t_after == time_from_peak_points)
     {
       //TODO stimulate
+      update_in_this_cycle = true;
+      t_after = 0; 
+      got_spike = false;
     }
+  }
+
+
+  if(update_in_this_cycle)
+  {
+    // Save threshold values for next spike
+    if(time_from_peak_points = 0)
+    // Get threshold for V
+    switch_th = false;
+    th_calculated = v_list[(vector_size + cycle - time_from_peak_points) % vector_size];
+    output(1) = th_calculated;
+
+    // Get slope
+    x1 = v_list[(vector_size + cycle - time_from_peak_points ) % vector_size];
+    x2 = v_list[(vector_size + cycle - time_from_peak_points -n_p_slope) % vector_size];
+  
+    sl_calculated = calculate_slope(x1, x2, n_p_slope*period);
+    output(2) = sl_calculated;
+
+    //Get threshold for sum 
+    th_sum_calculated = sum_list[(vector_size + cycle - time_from_peak_points) % vector_size];
+    //Get threshold by mean of 3 last spikes. 
+    //TODO: define lim of buffer and size. (use more points ¿?)
+    th_sum_buff[n_spikes%10] = th_sum_calculated;
+    th_sum_calculated = (th_sum_calculated + th_sum_buff[(n_spikes%10)-1] + th_sum_buff[(n_spikes%10)-2])/3;
+    update_in_this_cycle = false;
   }
 
 
@@ -298,6 +308,7 @@ SpikePredictor::initParameters(void)
   sum_reset = 0;
 
   got_spike = false;
+  update_in_this_cycle = false;
 
   updatable = true;
 
