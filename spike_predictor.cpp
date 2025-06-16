@@ -60,11 +60,6 @@ static DefaultGUIModel::variable_t vars[] = {
   {"Slope threshold", "Value of the slope that triggers the state (if -1000 calculates threshold)", DefaultGUIModel::PARAMETER,},
 
   {"Filtered signal", "Filter", DefaultGUIModel::OUTPUT,},
-  {"Calculated threshold", "Calculated threshold", DefaultGUIModel::OUTPUT,},
-  {"Calculated slope", "Calculated slope", DefaultGUIModel::OUTPUT,},
-  {"Calculated sum threshold", "Calculated Accumulated sum threshold", DefaultGUIModel::OUTPUT,},
-  {"Slope output", "Slope value", DefaultGUIModel::OUTPUT,},
-  {"Sum output", "Accumulated sum value as an output", DefaultGUIModel::OUTPUT,},
   {"Crossed Sum State", "Whether the sum has surpased the threshold", DefaultGUIModel::OUTPUT,},
   {"Crossed Voltage State", "Whether the voltage has surpased the threshold", DefaultGUIModel::OUTPUT,},
   {"Crossed Slope State", "Whether the sum has surpased the threshold", DefaultGUIModel::OUTPUT,},
@@ -74,6 +69,7 @@ static DefaultGUIModel::variable_t vars[] = {
   {"Sum init input (V)", "Minimum voltage sum", DefaultGUIModel::STATE,},
   {"Min sum", "Minimum voltage sum", DefaultGUIModel::STATE,},
   {"Calculated sum threshold state", "Calculated threshold for sum", DefaultGUIModel::STATE,},
+  {"Current slope state", "Slope value", DefaultGUIModel::STATE,},
   {"Accumulated sum", "Accumulated voltage sum", DefaultGUIModel::STATE,},
 
 };
@@ -148,7 +144,6 @@ SpikePredictor::execute(void)
   double x1 = v_list[(vector_size + cycle) % vector_size];
   double x2 = v_list[(vector_size + cycle-n_p_slope) % vector_size];
   curr_slope = calculate_slope(x1, x2, n_p_slope*period);
-  output(4) = curr_slope;
 
   // Spike detection
   if(!got_spike)
@@ -195,14 +190,12 @@ SpikePredictor::execute(void)
     // Get threshold for V
     switch_th = false;
     th_calculated = v_list[(vector_size + cycle - time_from_peak_points) % vector_size];
-    output(1) = th_calculated;
 
     // Get slope
     x1 = v_list[(vector_size + cycle - time_from_peak_points ) % vector_size];
     x2 = v_list[(vector_size + cycle - time_from_peak_points -n_p_slope) % vector_size];
   
     sl_calculated = calculate_slope(x1, x2, n_p_slope*period);
-    output(2) = sl_calculated;
 
     //Get threshold for sum 
     th_sum_calculated = sum_list[(vector_size + cycle - time_from_peak_points) % vector_size];
@@ -236,13 +229,10 @@ SpikePredictor::execute(void)
   //increase accumulated sum
   sum += v;
   sum_list[cycle] = sum;
-  output(5) = sum;
 
   if (th_sum_param < 0) //If param modified
     th_sum_calculated = th_sum_param;
   
-  output(3) = th_sum_calculated;
- 
   if (slope_th_param < -1000) //If param modified
     sl_calculated = slope_th_param;
 
@@ -254,15 +244,15 @@ SpikePredictor::execute(void)
   if (updatable)
   {
     // output(6) = sum <= th_sum_param; //Area threshold crossed
-    output(6) = sum < th_sum_calculated; //Area threshold crossed
-    output(7) = v > th_calculated; //Voltage threshold crossed
-    output(8) = curr_slope > sl_calculated; //Current threshold crossed
+    output(1) = sum < th_sum_calculated; //Area threshold crossed
+    output(2) = v > th_calculated; //Voltage threshold crossed
+    output(3) = curr_slope > sl_calculated; //Current threshold crossed
   }
   else
   {
-    output(6) = 0;
-    output(7) = 0;
-    output(8) = 0;
+    output(1) = 0;
+    output(2) = 0;
+    output(3) = 0;
   }
 
   
@@ -332,6 +322,7 @@ SpikePredictor::update(DefaultGUIModel::update_flags_t flag)
       setState("Calculated threshold state", th_calculated);
       setState("Calculated sum threshold state", th_sum_calculated);
       setState("Calculated slope state", sl_calculated);
+      setState("Current slope state", curr_slope);
       setState("Accumulated sum", sum);
       setState("Min sum", sum_min);
       setState("Sum init input (V)", sum_reset);
