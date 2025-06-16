@@ -65,7 +65,7 @@ private:
   bool updatable;
   
   bool switch_th;
-  double backtime;
+  double time_from_peak;
   int n_points;
   int n_p_slope;
 

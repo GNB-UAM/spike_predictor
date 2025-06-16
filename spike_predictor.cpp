@@ -51,7 +51,7 @@ static DefaultGUIModel::variable_t vars[] = {
   {"Integrate init input (V)", "Voltage value to reset sum", DefaultGUIModel::INPUT,},
 
   {"Firing threshold (V)", "Threshold to declare spike beggining", DefaultGUIModel::PARAMETER,},
-  {"Backtime (ms)", "Time before max that define Calculated threshold", DefaultGUIModel::PARAMETER,},
+  {"Time from peak (ms)", "Time before (negative) or after (positive) the peak to stimulate", DefaultGUIModel::PARAMETER,},
   {"N Points Filter", "Number of points for the filter", DefaultGUIModel::PARAMETER,},
   {"N Points Slope", "Number of points for the slope", DefaultGUIModel::PARAMETER,},
   {"Sum init (V)", "Voltage value to reset accumulated sum", DefaultGUIModel::PARAMETER,},
@@ -130,7 +130,7 @@ void
 SpikePredictor::execute(void)
 {
   double v = input(0);
-  int backtime_points = backtime / period;
+  int time_from_peak_points = time_from_peak / period;
   sum_reset = input(1);
   int allow_reset = 1;
 
@@ -159,7 +159,7 @@ SpikePredictor::execute(void)
       n_spikes++;
 
   		/*SPIKE DETECTED*/
-      if (backtime < 0)
+      if (time_from_peak < 0)
       {
         updatable = true;
         // cycle --;
@@ -169,18 +169,18 @@ SpikePredictor::execute(void)
 
       // Get threshold for V
   		switch_th = false;
-      th_calculated = v_list[(vector_size + cycle - backtime_points) % vector_size];
+      th_calculated = v_list[(vector_size + cycle - time_from_peak_points) % vector_size];
   		output(1) = th_calculated;
 
       // Get slope
-      x1 = v_list[(vector_size + cycle - backtime_points ) % vector_size];
-      x2 = v_list[(vector_size + cycle - backtime_points -n_p_slope) % vector_size];
+      x1 = v_list[(vector_size + cycle - time_from_peak_points ) % vector_size];
+      x2 = v_list[(vector_size + cycle - time_from_peak_points -n_p_slope) % vector_size];
      
       sl_calculated = calculate_slope(x1, x2, n_p_slope*period);
       output(2) = sl_calculated;
 
       //Get threshold for sum 
-      th_sum_calculated = sum_list[(vector_size + cycle - backtime_points) % vector_size];
+      th_sum_calculated = sum_list[(vector_size + cycle - time_from_peak_points) % vector_size];
       //Get threshold by mean of 3 last spikes. 
       //TODO: define lim of buffer and size. (use more points ¿?)
       th_sum_buff[n_spikes%10] = th_sum_calculated;
@@ -195,7 +195,7 @@ SpikePredictor::execute(void)
   // Hiperpolarization  --> spike detection ON again
   if(switch_th==false && v < th_spike){
     switch_th = true;
-    // if (backtime < 0)
+    // if (time_from_peak < 0)
     //   updatable = false;
   }
 
@@ -264,7 +264,7 @@ SpikePredictor::initParameters(void)
   v_list.resize(vector_size, 0);
   sum_list.resize(vector_size, 0);
   switch_th = false;
-  backtime = 0;
+  time_from_peak = 0;
   th_spike = 0;
   n_points = 0;
   n_p_slope = 0;
@@ -296,7 +296,7 @@ SpikePredictor::update(DefaultGUIModel::update_flags_t flag)
     case INIT:
       period = RT::System::getInstance()->getPeriod() * 1e-6; // ms
       setParameter("Firing threshold (V)", th_spike);
-      setParameter("Backtime (ms)", backtime);
+      setParameter("Time from peak (ms)", time_from_peak);
       setParameter("N Points Filter", n_points);
       setParameter("N Points Slope", n_p_slope);
       setParameter("Accumulated sum threshold", th_sum_param);
@@ -315,7 +315,7 @@ SpikePredictor::update(DefaultGUIModel::update_flags_t flag)
 
     case MODIFY:
       th_spike = getParameter("Firing threshold (V)").toDouble();
-      backtime = getParameter("Backtime (ms)").toDouble();
+      time_from_peak = getParameter("Time from peak (ms)").toDouble();
       n_points = getParameter("N Points Filter").toDouble();
       n_p_slope = getParameter("N Points Slope").toDouble();
       sum_reset_param = getParameter("Sum init (V)").toDouble();
