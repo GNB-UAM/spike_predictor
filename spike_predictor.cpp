@@ -63,6 +63,7 @@ static DefaultGUIModel::variable_t vars[] = {
   {"Crossed Sum State", "Whether the sum has surpased the threshold", DefaultGUIModel::OUTPUT,},
   {"Crossed Voltage State", "Whether the voltage has surpased the threshold", DefaultGUIModel::OUTPUT,},
   {"Crossed Slope State", "Whether the sum has surpased the threshold", DefaultGUIModel::OUTPUT,},
+  {"Time after state", "Time after the peak reached", DefaultGUIModel::OUTPUT,},
 
   {"Calculated threshold state", "Calculated threshold", DefaultGUIModel::STATE,},
   {"Calculated slope state", "Calculated slope", DefaultGUIModel::STATE,},
@@ -126,69 +127,66 @@ void
 SpikePredictor::execute(void)
 {
   double v = input(0);
-  int time_from_peak_points = time_from_peak / period;
+  int time_from_peak_points = abs(time_from_peak / period);
   sum_reset = input(1);
   int allow_reset = 1;
 
   /*SAVE NEW DATA*/
-  // v_list[cycle] = v;
   // filter signal --> if n points filter > 0 v modified
   double v_filtered = filter(v_list,cycle,v,n_points);
   v_list[cycle] = v_filtered;
 
   output(0) = v_filtered;
 
-  // int n_p_slope = 15;
-
   // Calculate slope 
   double x1 = v_list[(vector_size + cycle) % vector_size];
   double x2 = v_list[(vector_size + cycle-n_p_slope) % vector_size];
   curr_slope = calculate_slope(x1, x2, n_p_slope*period);
 
-  // Spike detection
-  if(!got_spike)
-  {
-    /*OVER THE THRESHOLD*/
-    if (v > th_spike && switch_th == true){
-      if (v < v_list[cycle-3]){
+  /*OVER THE THRESHOLD*/
+  if (v > th_spike){
+    /*Change in slope*/
+    if (v < v_list[cycle-3]){
 
-        n_spikes++;
-
-        /*SPIKE DETECTED*/
-        if (time_from_peak <= 0)
-        {
-          updatable = true;
-          update_in_this_cycle = true;
-          // cycle --;
-        }
-        else{
-          t_after = 0;
-        }
-        allow_reset = 1;
+      /*SPIKE DETECTED*/
+      if (time_from_peak < 0)
+      {
+        update_in_this_cycle = true;
+        got_spike = false;
       }
-      
+      else{
+        got_spike = true;
+        t_after = 0;
+      }
+      allow_reset = 1;
     }
+    
   }
-  else //After the peak
+  // Spike detection
+  if(got_spike)//After the peak  
   {
     if (t_after < time_from_peak_points){ //stimulate after the peak
       t_after++; //Wait for the time to stimulate
     }
     else if (t_after == time_from_peak_points)
     {
-      //TODO stimulate
-      update_in_this_cycle = true;
-      t_after = 0; 
+      printf("Time after and time_fro... %d %d\n",t_after, time_from_peak_points);
+      output(4) = 1;
+      t_after++;
+    }
+    else 
+    {
+      printf("En el final %d %d\n",t_after, time_from_peak_points);
+      output(4) = 0;
       got_spike = false;
     }
   }
 
-
   if(update_in_this_cycle)
   {
+    printf("Exploring %d points from spike\n", time_from_peak_points); 
     // Save threshold values for next spike
     // Get threshold for V
-    switch_th = false;
     th_calculated = v_list[(vector_size + cycle - time_from_peak_points) % vector_size];
 
     // Get slope
@@ -207,14 +205,6 @@ SpikePredictor::execute(void)
   }
 
 
-  // Hiperpolarization  --> spike detection ON again
-  if(switch_th==false && v < th_spike){
-    switch_th = true;
-    // if (time_from_peak < 0)
-    //   updatable = false;
-  }
-
-  // sum_reset = input(1);
   if(sum_reset != 0){ 
       sum_reset_param = sum_reset;
   }else //If there is no input get default
@@ -241,20 +231,9 @@ SpikePredictor::execute(void)
     sum_min = sum;
 
   // Update states
-  if (updatable)
-  {
-    // output(6) = sum <= th_sum_param; //Area threshold crossed
-    output(1) = sum < th_sum_calculated; //Area threshold crossed
-    output(2) = v > th_calculated; //Voltage threshold crossed
-    output(3) = curr_slope > sl_calculated; //Current threshold crossed
-  }
-  else
-  {
-    output(1) = 0;
-    output(2) = 0;
-    output(3) = 0;
-  }
-
+  output(1) = sum < th_sum_calculated; //Area threshold crossed
+  output(2) = v > th_calculated; //Voltage threshold crossed
+  output(3) = curr_slope > sl_calculated; //Current threshold crossed
   
   /*NEXT CYCLE*/
   cycle++;
@@ -271,11 +250,10 @@ SpikePredictor::initParameters(void)
 {
   //TODO fix for other period times
   vector_size = 10*4000; // 10 reads per ms * 100 ms buffer
-  // vector_size = 100 /  RT::System::getInstance()->getPeriod() * 1e-6; // 0.1 ms per read * 100 ms buffer
+  // vector_sizºe = 100 /  RT::System::getInstance()->getPeriod() * 1e-6; // 0.1 ms per read * 100 ms buffer
   cycle = 0;
   v_list.resize(vector_size, 0);
   sum_list.resize(vector_size, 0);
-  switch_th = false;
   time_from_peak = 0;
   th_spike = 0;
   n_points = 0;
