@@ -64,6 +64,8 @@ private:
   double curr_slope;
   bool updatable;
   
+  bool got_spike;
+  
   bool switch_th;
   double time_from_peak;
   int n_points;
