@@ -192,7 +192,6 @@ SpikePredictor::execute(void)
   if(update_in_this_cycle)
   {
     // Save threshold values for next spike
-    if(time_from_peak_points = 0)
     // Get threshold for V
     switch_th = false;
     th_calculated = v_list[(vector_size + cycle - time_from_peak_points) % vector_size];
