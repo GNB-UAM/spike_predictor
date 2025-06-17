@@ -134,6 +134,7 @@ SpikePredictor::execute(void)
   /*SAVE NEW DATA*/
   // filter signal --> if n points filter > 0 v modified
   double v_filtered = filter(v_list,cycle,v,n_points);
+  v = v_filtered;
   v_list[cycle] = v_filtered;
 
   output(0) = v_filtered;
@@ -144,18 +145,16 @@ SpikePredictor::execute(void)
   curr_slope = calculate_slope(x1, x2, n_p_slope*period);
 
   /*OVER THE THRESHOLD*/
-  if (v > th_spike){
+  if (v > th_spike && !got_spike){
     /*Change in slope*/
-    if (v < v_list[cycle-3]){
-
+    if (v < v_list[(vector_size + cycle - 3) % vector_size]){
+      got_spike = true;
       /*SPIKE DETECTED*/
       if (time_from_peak < 0)
       {
         update_in_this_cycle = true;
-        got_spike = false;
       }
       else{
-        got_spike = true;
         t_after = 0;
       }
       allow_reset = 1;
@@ -165,26 +164,27 @@ SpikePredictor::execute(void)
   // Spike detection
   if(got_spike)//After the peak  
   {
-    if (t_after < time_from_peak_points){ //stimulate after the peak
-      t_after++; //Wait for the time to stimulate
-    }
-    else if (t_after == time_from_peak_points)
-    {
-      printf("Time after and time_fro... %d %d\n",t_after, time_from_peak_points);
-      output(4) = 1;
-      t_after++;
-    }
-    else 
-    {
-      printf("En el final %d %d\n",t_after, time_from_peak_points);
-      output(4) = 0;
+    if (time_from_peak < 0 && v < th_spike)
       got_spike = false;
+    else if (time_from_peak >= 0){
+      if (t_after < time_from_peak_points){ //stimulate after the peak
+        t_after++; //Wait for the time to stimulate
+      }
+      else if (t_after == time_from_peak_points)
+      {
+        output(4) = 1;
+        t_after++;
+      }
+      else 
+      {
+        output(4) = 0;
+        got_spike = false;
+      }
     }
   }
 
   if(update_in_this_cycle)
   {
-    printf("Exploring %d points from spike\n", time_from_peak_points); 
     // Save threshold values for next spike
     // Get threshold for V
     th_calculated = v_list[(vector_size + cycle - time_from_peak_points) % vector_size];
