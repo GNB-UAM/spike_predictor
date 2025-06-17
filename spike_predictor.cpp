@@ -146,15 +146,17 @@ SpikePredictor::execute(void)
 
   /*OVER THE THRESHOLD*/
   if (v > th_spike && !got_spike){
-    /*Change in slope*/
-    if (v < v_list[(vector_size + cycle - 3) % vector_size]){
+    float v_prev1 = v_list[(vector_size + cycle - 2) % vector_size];
+    float v_prev2 = v_list[(vector_size + cycle - 3) % vector_size];
+    //Change in slope for positive and negatives
+    bool slope_change = (v_prev2 - v_prev1) * (v - v_prev1) < 0;
+
+    if (slope_change) {
       got_spike = true;
-      /*SPIKE DETECTED*/
-      if (time_from_peak < 0)
-      {
+
+      if (time_from_peak < 0) {
         update_in_this_cycle = true;
-      }
-      else{
+      } else {
         t_after = 0;
       }
       allow_reset = 1;
